@@ -80,6 +80,8 @@ class DQN(nn.Module):
     self.b_h = nn.Parameter(torch.zeros(args.hidden_size))
     self.b_c = nn.Parameter(torch.zeros(128))
     self.W = nn.Parameter(torch.rand(128, 128))
+    self.layer_norm1 = nn.LayerNorm(args.hidden_size)
+    self.layer_norm2 = nn.LayerNorm(128)
 
   def forward(self, x, log=False):
     x = self.convs(x)
@@ -87,10 +89,10 @@ class DQN(nn.Module):
     v = self.fc_z_v(F.relu(self.fc_h_v(x)))  # Value stream
     a = self.fc_z_a(F.relu(self.fc_h_a(x)))  # Advantage stream
     h = torch.matmul(x, self.W_h) + self.b_h # Contrastive head
-    h = nn.LayerNorm(h.shape[1])(h)
+    h = self.layer_norm1(h)
     h = F.relu(h)
     h = torch.matmul(h, self.W_c) + self.b_c # Contrastive head
-    h = nn.LayerNorm(128)(h)
+    h = self.layer_norm2(h)
     v, a = v.view(-1, 1, self.atoms), a.view(-1, self.action_space, self.atoms)
     q = v + a - a.mean(1, keepdim=True)  # Combine streams
     if log:  # Use log softmax for numerical stability
